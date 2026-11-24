@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QR</title>
+<style>
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;font-family:Arial,sans-serif;font-size:20px;color:#333;background:#f5f7fa;text-align:center;padding:16px}
+  .loader{width:56px;height:56px;border:6px solid #ddd;border-top-color:#1a73e8;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:20px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  a{color:#1a73e8}
+</style>
+</head>
+<body>
+<div class="loader" id="loader"></div>
+<div id="msg">Cargando...</div>
+<script>
+  // Pega aqui la URL de la implementacion de Apps Script (termina en /exec). Es lo unico que hay que editar.
+  const WEB_SERVICE = 'https://script.google.com/macros/s/AKfycbwN5AGXSxAJoIX7U06Y-tNKH6JrAM_nCvsrB1OOnv_oFIVCLsNptDruYhir-Uj9S-OQ/exec';
+
+  const msg = document.getElementById('msg');
+  function fail(t){ document.getElementById('loader').style.display='none'; msg.textContent=t; }
+  // Comprobacion adicional en el navegador: solo se redirige a direcciones http o https validas, sin espacios, de hasta 2000 caracteres.
+  function safeUrl(u){
+    if (u.length > 2000 || /\s/.test(u)) return null;
+    try { const p = new URL(u); return (p.protocol === 'http:' || p.protocol === 'https:') ? p.href : null; }
+    catch (e) { return null; }
+  }
+
+  let key = '';
+  try { key = (new URLSearchParams(window.location.search).get('k') || '').trim(); } catch (e) { key = ''; }
+
+  if (!WEB_SERVICE) fail('Falta configurar la direccion del servicio web.');
+  else if (!key || key.length > 100) fail('Falta el codigo del QR o no es valido.');
+  else {
+    const ctl = new AbortController();
+    setTimeout(() => ctl.abort(), 15000);
+    fetch(WEB_SERVICE + '?k=' + encodeURIComponent(key), { signal: ctl.signal })
+      .then(r => r.text())
+      .then(t => {
+        t = t.trim();
+        if (t === 'ERROR_CONFIG') { fail('El servicio no esta configurado. Avisa al administrador.'); return; }
+        const url = safeUrl(t);
+        if (url) window.location.replace(url);
+        else fail('Este codigo QR no esta activo.');
+      })
+      .catch(() => fail('No se pudo cargar el destino. Intentalo de nuevo.'));
+  }
+</script>
+</body>
+</html>
